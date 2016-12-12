@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Sigym4.Units.Accelerate() where
+module Sigym4.Units.Accelerate ( deriveQE ) where
 
 import           Sigym4.Units.Accelerate.Common (deriveQE)
 import           Sigym4.Units as U

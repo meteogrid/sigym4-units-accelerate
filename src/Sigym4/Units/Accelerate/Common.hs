@@ -4,16 +4,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE Trustworthy #-}
 module Sigym4.Units.Accelerate.Common (deriveQE) where
 
 import           Sigym4.Units as U
-import           Control.Newtype
 import           Data.Array.Accelerate as A
 import           Data.Array.Accelerate.Smart (Exp(..))
 import           Data.Array.Accelerate.Array.Sugar as A
@@ -65,34 +65,43 @@ instance
   type Plain (DP.Quantity u a) = DP.Quantity u a
   lift = toQE . lift . unQuantity
 
+class
+  ( Coercible t a
+  , HasUnits (Exp a)
+  , MachineType t ~ MachineType a
+  , Units t ~ Units a
+  , a ~ Plain a
+  ) => CoercibleExp t a | t -> a where
+  coerceExp :: Exp a -> Exp t
+  coerceExp = unsafeCoerce
 
+  coerceMExp :: t -> MachineType (Exp t) -> MachineType (Exp a)
+  coerceMExp _ = unsafeCoerce :: MachineType (Exp t) -> MachineType (Exp a)
 
+  unCoerceExp :: Exp t -> Exp a
+  unCoerceExp = unsafeCoerce
+
+  unCoerceMExp :: t -> MachineType (Exp a) -> MachineType (Exp t)
+  unCoerceMExp _ = unsafeCoerce :: MachineType (Exp a) -> MachineType (Exp t)
 
 ntMulU
   :: forall t a.
-  ( HasUnits (Exp a)
-  , Coercible t a
-  , Newtype t a -- GHC thinks its redundant but it propagates the fundep a -> t
-  , MachineType t ~ MachineType a
-  , Units t ~ Units a
+  ( CoercibleExp t a
   )
   => Exp (MachineType t) -> Units t -> Exp t
 ntMulU p u =
-  (unsafeCoerce :: Exp a -> Exp t)
-  ((unsafeCoerce :: MachineType (Exp t) -> MachineType (Exp a)) p U.*~ u)
+  (coerceExp :: Exp a -> Exp t)
+  ((coerceMExp (undefined :: t) :: MachineType (Exp t) -> MachineType (Exp a)) p U.*~ u)
+
 
 ntDivU
   :: forall t a.
-  ( HasUnits (Exp a)
-  , Coercible t a
-  , Newtype t a -- GHC thinks its redundant but it propagates the fundep a -> t
-  , MachineType t ~ MachineType a
-  , Units t ~ Units a
+  ( CoercibleExp t a
   )
   => Exp t -> Units t -> Exp (MachineType t)
 ntDivU p u =
-  (unsafeCoerce :: Exp (MachineType a) -> Exp (MachineType t))
-  ((unsafeCoerce :: Exp t -> Exp a) p U./~ u)
+  (unCoerceMExp (undefined :: t) :: Exp (MachineType a) -> Exp (MachineType t))
+  ((unCoerceExp :: Exp t -> Exp a) p U./~ u)
 
 toQE :: Exp a -> Exp (Quantity u a)
 toQE = unsafeCoerce
@@ -106,8 +115,8 @@ toQ = unsafeCoerce
 fromQ :: Quantity u a -> a
 fromQ = unsafeCoerce
 
-liftNewtype :: forall t a. (Lift Exp a, Newtype t a) => t -> Exp t
-liftNewtype = (unsafeCoerce :: Exp (Plain a) -> Exp t) . lift . unpack
+liftNewtype :: forall t a. (Lift Exp a, CoercibleExp t a) => t -> Exp t
+liftNewtype = coerceExp . lift . (coerce :: t -> a)
 {-# INLINE liftNewtype #-}
 
 -- | Derives 'Elt', 'Lift Exp' and 'HasUnits' for a monomorphic
@@ -117,13 +126,14 @@ liftNewtype = (unsafeCoerce :: Exp (Plain a) -> Exp t) . lift . unpack
 -- >>> newtype AirTemperature = AirTemperature (DP.Temperature Double)
 -- >>> deriveQE [t| AirTemperature -> DP.Temperature Double|]
 deriveQE :: TypeQ -> DecsQ
-deriveQE t = do
-  AppT (AppT ArrowT n') a' <- t
-  let n = return n'; a = return a'
+deriveQE ta = do
+  AppT (AppT ArrowT t') a' <- ta
+  let t = return t'; a = return a'
   [d|
-    deriving instance Elt $n
-    type instance EltRepr $n = EltRepr $a
-    instance Lift Exp $n where {type Plain $n = $n; lift = liftNewtype}
-    instance HasUnits (Exp $n) where {(*~)=ntMulU; (/~)=ntDivU}
+    deriving instance Elt $t
+    type instance EltRepr $t = EltRepr $a
+    instance Lift Exp $t where {type Plain $t = $t; lift = liftNewtype}
+    instance HasUnits (Exp $t) where {(*~)=ntMulU; (/~)=ntDivU}
+    instance CoercibleExp $t $a
     |]
 
