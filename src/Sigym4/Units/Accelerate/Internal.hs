@@ -12,7 +12,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Trustworthy #-}
-module Sigym4.Units.Accelerate.Common (deriveQE) where
+module Sigym4.Units.Accelerate.Internal (deriveQE) where
 
 import           Sigym4.Units as U
 import           Data.Array.Accelerate as A
