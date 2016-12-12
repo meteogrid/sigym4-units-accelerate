@@ -84,9 +84,7 @@ class
   unCoerceMExp _ = unsafeCoerce :: MachineType (Exp a) -> MachineType (Exp t)
 
 ntMulU
-  :: forall t a.
-  ( CoercibleExp t a
-  )
+  :: forall t a. CoercibleExp t a
   => Exp (MachineType t) -> Units t -> Exp t
 ntMulU p u =
   (coerceExp :: Exp a -> Exp t)
@@ -94,9 +92,7 @@ ntMulU p u =
 
 
 ntDivU
-  :: forall t a.
-  ( CoercibleExp t a
-  )
+  :: forall t a. CoercibleExp t a
   => Exp t -> Units t -> Exp (MachineType t)
 ntDivU p u =
   (unCoerceMExp (undefined :: t) :: Exp (MachineType a) -> Exp (MachineType t))
@@ -118,12 +114,13 @@ liftNewtype :: forall t a. (Lift Exp a, CoercibleExp t a) => t -> Exp t
 liftNewtype = coerceExp . lift . (coerce :: t -> a)
 {-# INLINE liftNewtype #-}
 
--- | Derives 'Elt', 'Lift Exp' and 'HasUnits' for a monomorphic
+-- | Derives 'Elt', @'Lift' 'Exp'@ and 'HasUnits' for a monomorphic
 -- newtype of a 'Quantity'.
 --
 -- Usage:
--- >>> newtype AirTemperature = AirTemperature (DP.Temperature Double)
--- >>> deriveQE [t| AirTemperature -> DP.Temperature Double|]
+--
+--  >>> newtype AirTemperature = AirTemperature (DP.Temperature Double)
+--  >>> deriveQE [t| AirTemperature -> DP.Temperature Double|]
 deriveQE :: TypeQ -> DecsQ
 deriveQE ta = ta >>= \case
   AppT (AppT ArrowT t') a' ->
