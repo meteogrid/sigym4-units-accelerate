@@ -18,9 +18,9 @@ import           Data.Array.Accelerate as A
 import           Data.Array.Accelerate.Smart (Exp(..))
 import           Data.Array.Accelerate.Array.Sugar as A
 import           Data.Coerce
+import           Data.ExactPi (approximateValue)
 import           Data.Typeable
 import           Numeric.Units.Dimensional as DP
-import           Numeric.Units.Dimensional.Internal as DP
 import           Numeric.Units.Dimensional.Coercion as DP
 import           Prelude as P
 import           Language.Haskell.TH hiding (Exp)
@@ -30,16 +30,18 @@ type instance Units       (Exp a) = Units       a
 type instance MachineType (Exp a) = Exp (MachineType a)
 
 instance
-  (
-    a ~ Plain a
+  ( a ~ Plain a
   , P.Num (Exp a)
   , P.Floating (Exp a)
+  , P.Floating a
   , A.Lift Exp a
   )
   => HasUnits (Exp (Quantity u a))
   where
-  p *~ Unit _ _ u = toQE (p A.* A.lift u)
-  p /~ Unit _ _ u = fromQE p A./ A.lift u
+  p *~ u = toQE (p A.* A.lift u')
+    where u' = approximateValue (exactValue u) :: a
+  p /~ u = fromQE p A./ A.lift u'
+    where u' = approximateValue (exactValue u) :: a
 
 
 type instance EltRepr (DP.Quantity u a) = EltRepr a
