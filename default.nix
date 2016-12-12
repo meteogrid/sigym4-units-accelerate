@@ -1,17 +1,17 @@
 { mkDerivation, accelerate, accelerate-llvm-native, base
-, dimensional, exact-pi, hspec, newtype, QuickCheck, sigym4-units
-, stdenv
+, dimensional, hspec, newtype, QuickCheck, should-not-typecheck
+, sigym4-units, stdenv, template-haskell
 }:
 mkDerivation {
   pname = "sigym4-units-accelerate";
   version = "0.1.0.0";
   src = ./.;
   libraryHaskellDepends = [
-    accelerate base dimensional exact-pi newtype sigym4-units
+    accelerate base dimensional newtype sigym4-units template-haskell
   ];
   testHaskellDepends = [
-    accelerate accelerate-llvm-native base hspec QuickCheck
-    sigym4-units
+    accelerate accelerate-llvm-native base hspec newtype QuickCheck
+    should-not-typecheck sigym4-units
   ];
   homepage = "https:&&github.com/meteogrid/sigym4-units-accelerate";
   description = "Sigym4.Units lifted to Accelerate expressions";
