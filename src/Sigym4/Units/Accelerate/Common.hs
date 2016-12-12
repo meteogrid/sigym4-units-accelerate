@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE Trustworthy #-}
@@ -126,14 +127,13 @@ liftNewtype = coerceExp . lift . (coerce :: t -> a)
 -- >>> newtype AirTemperature = AirTemperature (DP.Temperature Double)
 -- >>> deriveQE [t| AirTemperature -> DP.Temperature Double|]
 deriveQE :: TypeQ -> DecsQ
-deriveQE ta = do
-  AppT (AppT ArrowT t') a' <- ta
-  let t = return t'; a = return a'
-  [d|
-    deriving instance Elt $t
-    type instance EltRepr $t = EltRepr $a
-    instance Lift Exp $t where {type Plain $t = $t; lift = liftNewtype}
-    instance HasUnits (Exp $t) where {(*~)=ntMulU; (/~)=ntDivU}
-    instance CoercibleExp $t $a
-    |]
+deriveQE ta = ta >>= \case
+  AppT (AppT ArrowT t') a' ->
+    let t = return t'; a = return a'
+    in [d|deriving instance Elt $t
+          type instance EltRepr $t = EltRepr $a
+          instance Lift Exp $t where {type Plain $t = $t; lift = liftNewtype}
+          instance HasUnits (Exp $t) where {(*~)=ntMulU; (/~)=ntDivU}
+          instance CoercibleExp $t $a|]
+  _ -> fail "deriveQE expects a type of the form: \"NewType -> UnderlyingType\""
 
