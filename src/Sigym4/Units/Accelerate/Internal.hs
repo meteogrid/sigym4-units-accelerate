@@ -77,13 +77,13 @@ class
 
 ntMulU
   :: forall t a m. CoercibleExp t a m
-  => Exp m -> Units t -> Exp t
+  => Exp m -> Units t (Exp m) -> Exp t
 ntMulU p u = (coerceExp :: Exp a -> Exp t) (p U.*~ u)
 
 
 ntDivU
   :: forall t a m. CoercibleExp t a m
-  => Exp t -> Units t -> Exp m
+  => Exp t -> Units t (Exp m) -> Exp m
 ntDivU p u = (unCoerceExp :: Exp t -> Exp a) p U./~ u
 
 toQE :: Exp a -> Exp (Quantity u a)
