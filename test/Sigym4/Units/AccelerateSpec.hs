@@ -19,7 +19,6 @@ import           Data.Array.Accelerate as A
 import qualified Data.Array.Accelerate.LLVM.Native      as CPU
 import           Data.List
 import           Data.Word (Word8)
-import           Unsafe.Coerce
 
 import           Test.Hspec
 import           Test.ShouldNotTypecheck (shouldNotTypecheck)
@@ -32,12 +31,12 @@ spec :: Spec
 spec = do
   it "does not allow deriving unsafe Exp Quantity newtype instances" $ shouldNotTypecheck $
     let asMeters = A.lift (Dangerous 2) :: Exp Dangerous
-        asFeet   = asMeters /~ foot :: Exp Double
+        asFeet   = asMeters /~ foot
     in show (CPU.run (unit asFeet))
 
   it "works for valid newtypes" $ do
-    let asMeters = A.lift (Distance (2 *~ weaken meter)) :: Exp Distance
-        asFeet   = asMeters /~ foot :: Exp Double
+    let asMeters = A.lift (Distance (2 *~ weaken meter)) :: Exp (Distance Double)
+        asFeet   = asMeters /~ foot
     show (CPU.run (unit asFeet)) `shouldSatisfy` isInfixOf "6.5616"
 
 
@@ -45,9 +44,8 @@ spec = do
 
 -- | Dangerous claims to be a newtype of a Distance but it's not...
 newtype Dangerous = Dangerous Word8
-type instance MachineType Dangerous = MachineType Distance
-type instance Units Dangerous = Units Distance
+type instance Units Dangerous = Units (Distance Double)
 -- This produces code which should not typecheck
-deriveQE [t|Dangerous -> Distance|]
+deriveQE [t|Dangerous -> Distance Double|]
 
 

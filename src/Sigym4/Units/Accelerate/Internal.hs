@@ -26,7 +26,6 @@ import           Language.Haskell.TH hiding (Exp)
 import           Unsafe.Coerce (unsafeCoerce)
 
 type instance Units       (Exp a) = Units       a
-type instance MachineType (Exp a) = Exp (MachineType a)
 
 instance
   ( a ~ Plain a
@@ -35,7 +34,7 @@ instance
   , P.Floating a
   , A.Lift Exp a
   )
-  => HasUnits (Exp (Quantity u a))
+  => HasUnits (Exp (Quantity u a)) (Exp a)
   where
   p *~ u = toQE (p A.* A.lift u')
     where u' = approximateValue (exactValue u) :: a
@@ -66,37 +65,26 @@ instance
 
 class
   ( Coercible t a
-  , HasUnits (Exp a)
-  , MachineType t ~ MachineType a
+  , HasUnits (Exp a) (Exp m)
   , Units t ~ Units a
   , a ~ Plain a
-  ) => CoercibleExp t a | t -> a where
+  ) => CoercibleExp t a m | t -> a, t -> m where
   coerceExp :: Exp a -> Exp t
   coerceExp = unsafeCoerce
-
-  coerceMExp :: t -> MachineType (Exp t) -> MachineType (Exp a)
-  coerceMExp _ = unsafeCoerce :: MachineType (Exp t) -> MachineType (Exp a)
 
   unCoerceExp :: Exp t -> Exp a
   unCoerceExp = unsafeCoerce
 
-  unCoerceMExp :: t -> MachineType (Exp a) -> MachineType (Exp t)
-  unCoerceMExp _ = unsafeCoerce :: MachineType (Exp a) -> MachineType (Exp t)
-
 ntMulU
-  :: forall t a. CoercibleExp t a
-  => Exp (MachineType t) -> Units t -> Exp t
-ntMulU p u =
-  (coerceExp :: Exp a -> Exp t)
-  ((coerceMExp (undefined :: t) :: MachineType (Exp t) -> MachineType (Exp a)) p U.*~ u)
+  :: forall t a m. CoercibleExp t a m
+  => Exp m -> Units t -> Exp t
+ntMulU p u = (coerceExp :: Exp a -> Exp t) (p U.*~ u)
 
 
 ntDivU
-  :: forall t a. CoercibleExp t a
-  => Exp t -> Units t -> Exp (MachineType t)
-ntDivU p u =
-  (unCoerceMExp (undefined :: t) :: Exp (MachineType a) -> Exp (MachineType t))
-  ((unCoerceExp :: Exp t -> Exp a) p U./~ u)
+  :: forall t a m. CoercibleExp t a m
+  => Exp t -> Units t -> Exp m
+ntDivU p u = (unCoerceExp :: Exp t -> Exp a) p U./~ u
 
 toQE :: Exp a -> Exp (Quantity u a)
 toQE = unsafeCoerce
@@ -110,25 +98,47 @@ toQ = unsafeCoerce
 fromQ :: Quantity u a -> a
 fromQ = unsafeCoerce
 
-liftNewtype :: forall t a. (Lift Exp a, CoercibleExp t a) => t -> Exp t
+liftNewtype :: forall t a m. (Lift Exp a, CoercibleExp t a m) => t -> Exp t
 liftNewtype = coerceExp . lift . (coerce :: t -> a)
 {-# INLINE liftNewtype #-}
 
--- | Derives 'Elt', @'Lift' 'Exp'@ and 'HasUnits' for a monomorphic
--- newtype of a 'Quantity'.
+-- | Derives 'Elt', @'Lift' 'Exp'@ and 'HasUnits' for a newtype of 'Quantity'
 --
 -- Usage:
 --
---  >>> newtype AirTemperature = AirTemperature (DP.Temperature Double)
---  >>> deriveQE [t| AirTemperature -> DP.Temperature Double|]
+--  >>> deriveQE [t| forall a. Num a => AirTemperature a -> DP.Temperature a|]
+--
+--
 deriveQE :: TypeQ -> DecsQ
 deriveQE ta = ta >>= \case
-  AppT (AppT ArrowT t') a' ->
-    let t = return t'; a = return a'
+  ForallT [tybind] cst (AppT (AppT ArrowT t') a') ->
+    let sig = return $ foldl AppT (TupleT (P.length csts)) csts
+        csts = cst P.++ P.map liftCst cst P.++ extraCst
+        liftCst (AppT c x) = AppT c (AppT (ConT ''Exp) x)
+        liftCst _          = error "expected a type application"
+        extraCst =
+          [ AppT (ConT ''Elt) ma'
+          , AppT (AppT EqualityT (AppT (ConT ''Plain) ma')) ma'
+          , AppT (AppT (ConT ''Lift) (ConT ''Exp)) ma'
+          ]
+        ma' = VarT mname
+        t = return t'
+        a = return a'
+        mname = case tybind of {PlainTV x->x; KindedTV x _->x}
+        ma = return ma'
+    in [d|deriving instance $sig => Elt $t
+          type instance EltRepr $t = EltRepr $a
+          instance $sig => Lift Exp $t where {type Plain $t = $t; lift = liftNewtype}
+          instance $sig => HasUnits (Exp $t) (Exp $ma) where {(*~)=ntMulU; (/~)=ntDivU}
+          instance $sig => CoercibleExp $t $a $ma|]
+  AppT (AppT ArrowT t') a'@(AppT _ ma') ->
+    let t = return t'
+        a = return a'
+        ma = return ma'
     in [d|deriving instance Elt $t
           type instance EltRepr $t = EltRepr $a
           instance Lift Exp $t where {type Plain $t = $t; lift = liftNewtype}
-          instance HasUnits (Exp $t) where {(*~)=ntMulU; (/~)=ntDivU}
-          instance CoercibleExp $t $a|]
+          instance HasUnits (Exp $t) (Exp $ma) where {(*~)=ntMulU; (/~)=ntDivU}
+          instance CoercibleExp $t $a $ma|]
   _ -> fail "deriveQE expects a type of the form: \"NewType -> UnderlyingType\""
 
