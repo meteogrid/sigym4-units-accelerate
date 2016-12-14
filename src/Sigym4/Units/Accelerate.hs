@@ -9,6 +9,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE Trustworthy #-}
 module Sigym4.Units.Accelerate (deriveQE) where
 
 import           Sigym4.Units.Accelerate.Internal (deriveQE)
