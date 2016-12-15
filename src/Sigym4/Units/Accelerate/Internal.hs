@@ -32,14 +32,16 @@ instance
   , P.Num (Exp a)
   , P.Floating (Exp a)
   , P.Floating a
-  , A.Lift Exp a
+  , A.Elt a
   )
   => HasUnits (Exp (Quantity u a)) (Exp a)
   where
-  p *~ u = toQE (p A.* A.lift u')
+  p *~ u = toQE (p A.* A.constant u')
     where u' = approximateValue (exactValue u) :: a
-  p /~ u = fromQE p A./ A.lift u'
+  {-# INLINE (*~) #-}
+  p /~ u = fromQE p A./ A.constant u'
     where u' = approximateValue (exactValue u) :: a
+  {-# INLINE (/~) #-}
 
 
 type instance EltRepr (DP.Quantity u a) = EltRepr a
@@ -62,6 +64,7 @@ instance
   where
   type Plain (DP.Quantity u a) = DP.Quantity u a
   lift = toQE . lift . unQuantity
+  {-# INLINE lift #-}
 
 class
   ( Coercible t a
@@ -71,32 +74,40 @@ class
   ) => CoercibleExp t a m | t -> a, t -> m where
   coerceExp :: Exp a -> Exp t
   coerceExp = unsafeCoerce
+  {-# INLINE coerceExp #-}
 
   unCoerceExp :: Exp t -> Exp a
   unCoerceExp = unsafeCoerce
+  {-# INLINE unCoerceExp #-}
 
 ntMulU
   :: forall t a m. CoercibleExp t a m
   => Exp m -> Units t (Exp m) -> Exp t
 ntMulU p u = (coerceExp :: Exp a -> Exp t) (p U.*~ u)
+{-# INLINE ntMulU #-}
 
 
 ntDivU
   :: forall t a m. CoercibleExp t a m
   => Exp t -> Units t (Exp m) -> Exp m
 ntDivU p u = (unCoerceExp :: Exp t -> Exp a) p U./~ u
+{-# INLINE ntDivU #-}
 
 toQE :: Exp a -> Exp (Quantity u a)
 toQE = unsafeCoerce
+{-# INLINE toQE #-}
 
 fromQE :: Exp (Quantity u a) -> Exp a
 fromQE = unsafeCoerce
+{-# INLINE fromQE #-}
 
 toQ :: a -> Quantity u a
 toQ = unsafeCoerce
+{-# INLINE toQ #-}
 
 fromQ :: Quantity u a -> a
 fromQ = unsafeCoerce
+{-# INLINE fromQ #-}
 
 liftNewtype :: forall t a m. (Lift Exp a, CoercibleExp t a m) => t -> Exp t
 liftNewtype = coerceExp . lift . (coerce :: t -> a)
