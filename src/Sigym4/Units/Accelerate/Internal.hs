@@ -25,7 +25,7 @@ import           Prelude as P
 import           Language.Haskell.TH hiding (Exp)
 import           Unsafe.Coerce (unsafeCoerce)
 
-type instance Units       (Exp a) = Units       a
+type instance Units (Exp a) (Exp b) = Units a b
 
 instance
   ( a ~ Plain a
@@ -69,7 +69,8 @@ instance
 class
   ( Coercible t a
   , HasUnits (Exp a) (Exp m)
-  , Units t ~ Units a
+  , Units (Exp t) (Exp m) ~ Units t m
+  , Units (Exp a) (Exp m) ~ Units t m
   , a ~ Plain a
   ) => CoercibleExp t a m | t -> a, t -> m where
   coerceExp :: Exp a -> Exp t
@@ -82,14 +83,14 @@ class
 
 ntMulU
   :: forall t a m. CoercibleExp t a m
-  => Exp m -> Units t (Exp m) -> Exp t
+  => Exp m -> Units (Exp t) (Exp m) -> Exp t
 ntMulU p u = (coerceExp :: Exp a -> Exp t) (p U.*~ u)
 {-# INLINE ntMulU #-}
 
 
 ntDivU
   :: forall t a m. CoercibleExp t a m
-  => Exp t -> Units t (Exp m) -> Exp m
+  => Exp t -> Units (Exp t) (Exp m) -> Exp m
 ntDivU p u = (unCoerceExp :: Exp t -> Exp a) p U./~ u
 {-# INLINE ntDivU #-}
 
@@ -129,7 +130,11 @@ deriveQE ta = ta >>= \case
         liftCst _          = error "expected a type application"
         extraCst =
           [ AppT (ConT ''Elt) ma'
-          , AppT (AppT EqualityT (AppT (ConT ''Plain) ma')) ma'
+          , EqualityT `AppT` (ConT ''Plain `AppT` ma') `AppT` ma'
+          , EqualityT `AppT` (ConT ''Units `AppT` (ConT ''Exp `AppT` t') `AppT` (ConT ''Exp `AppT` ma'))
+                      `AppT` (ConT ''Units `AppT` t' `AppT` ma')
+          , EqualityT `AppT` (ConT ''Units `AppT` (ConT ''Exp `AppT` a') `AppT` (ConT ''Exp `AppT` ma'))
+                      `AppT` (ConT ''Units `AppT` a' `AppT` ma')
           , AppT (AppT (ConT ''Lift) (ConT ''Exp)) ma'
           ]
         ma' = VarT mname

@@ -44,7 +44,7 @@ spec = do
 
 -- | Dangerous claims to be a newtype of a Distance but it's not...
 newtype Dangerous = Dangerous Word8
-type instance Units Dangerous = Units (Distance Double)
+type instance Units Dangerous Double = Units (Distance Double) Double
 -- This produces code which should not typecheck
 deriveQE [t|Dangerous -> Distance Double|]
 
