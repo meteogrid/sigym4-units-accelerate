@@ -32,14 +32,14 @@ instance
   , P.Num (Exp a)
   , P.Floating (Exp a)
   , P.Floating a
-  , A.Elt a
+  , A.Lift Exp a
   )
   => HasUnits (Exp (Quantity u a)) (Exp a)
   where
-  p *~ u = toQE (p A.* A.constant u')
+  p *~ u = toQE (p A.* A.lift u')
     where u' = approximateValue (exactValue u) :: a
   {-# INLINE (*~) #-}
-  p /~ u = fromQE p A./ A.constant u'
+  p /~ u = fromQE p A./ A.lift u'
     where u' = approximateValue (exactValue u) :: a
   {-# INLINE (/~) #-}
 
