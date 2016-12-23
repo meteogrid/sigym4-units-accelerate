@@ -1,13 +1,13 @@
 { mkDerivation, accelerate, accelerate-llvm-native, base
 , dimensional, hspec, newtype, QuickCheck, should-not-typecheck
-, sigym4-units, stdenv, template-haskell
+, sigym4-units, stdenv, template-haskell, numtype-dk
 }:
 mkDerivation {
   pname = "sigym4-units-accelerate";
   version = "0.1.0.0";
   src = ./.;
   libraryHaskellDepends = [
-    accelerate base dimensional newtype sigym4-units template-haskell
+    accelerate base dimensional newtype sigym4-units template-haskell numtype-dk
   ];
   testHaskellDepends = [
     accelerate accelerate-llvm-native base hspec newtype QuickCheck

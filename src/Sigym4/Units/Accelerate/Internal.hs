@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -14,8 +15,9 @@ module Sigym4.Units.Accelerate.Internal (deriveQE) where
 
 import           Sigym4.Units as U
 import           Data.Array.Accelerate as A
-import           Data.Array.Accelerate.Smart (Exp(..))
+import           Data.Array.Accelerate.Smart
 import           Data.Array.Accelerate.Array.Sugar as A
+import           Data.Array.Accelerate.Product
 import           Data.Coerce
 import           Data.ExactPi (approximateValue)
 import           Data.Typeable
@@ -57,14 +59,21 @@ instance
   toElt     = toQ . toElt
   fromElt   = fromElt . fromQ
 
-instance
-  ( a ~ Plain a
-  , Lift Exp a
-  ) => Lift Exp (DP.Quantity u a)
-  where
-  type Plain (DP.Quantity u a) = DP.Quantity u a
-  lift = toQE . lift . unQuantity
-  {-# INLINE lift #-}
+instance cst a => IsProduct cst (Quantity u a) where
+  type ProdRepr (Quantity u a) = ((), a)
+  fromProd _ x = ((), unQuantity x)
+  toProd _ ((), x) = Quantity x
+  prod _ _ = ProdRsnoc ProdRunit
+
+instance (Real (Plain a), Lift Exp a, Elt (Plain a), Typeable u, HasDimension (Proxy u))
+  => Lift Exp (DP.Quantity u a) where
+  type Plain (DP.Quantity u a) = DP.Quantity u (Plain a)
+  lift x = Exp . Tuple $ NilTup `SnocTup` lift (unQuantity x)
+
+instance (Real a, Elt a, Typeable u, HasDimension (Proxy u))
+  => Unlift Exp (Quantity u (Exp a)) where
+  unlift t = Quantity $ Exp $ ZeroTupIdx `Prj` t
+
 
 class
   ( Coercible t a
@@ -94,7 +103,7 @@ ntDivU
 ntDivU p u = (unCoerceExp :: Exp t -> Exp a) p U./~ u
 {-# INLINE ntDivU #-}
 
-toQE :: Exp a -> Exp (Quantity u a)
+toQE :: Exp a -> Exp (Quantity u (Plain a))
 toQE = unsafeCoerce
 {-# INLINE toQE #-}
 
