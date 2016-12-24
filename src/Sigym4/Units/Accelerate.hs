@@ -10,14 +10,13 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Trustworthy #-}
-module Sigym4.Units.Accelerate (deriveQE) where
+module Sigym4.Units.Accelerate (
+  (*~)
+, (/~)
+, module Sigym4.Units.Meteo
+, module Sigym4.Units
+) where
 
-import           Sigym4.Units.Accelerate.Internal (deriveQE)
-import           Sigym4.Units
+import           Sigym4.Units.Accelerate.Internal ( (*~), (/~) )
+import           Sigym4.Units hiding  ( (*~), (/~) )
 import           Sigym4.Units.Meteo
-
-deriveQE [t|forall a. (Real a, Floating a, Eq a) => Distance   a -> Length a|]
-deriveQE [t|forall a. (Real a, Floating a, Eq a) => Height     a -> Length a|]
-deriveQE [t|forall a. (Real a, Floating a, Eq a) => Ratio      a -> Dimensionless a|]
-deriveQE [t|forall a. (Real a, Floating a, Eq a) => NormRatio  a -> Dimensionless a|]
-deriveQE [t|forall a. (Real a, Floating a, Eq a) => CloudCover a -> NormRatio a|]
