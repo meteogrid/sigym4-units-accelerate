@@ -25,7 +25,7 @@ main = hspec spec
 spec :: Spec
 spec =
   it "works" $ do
-    let asMeters = 2 *~ weaken meter :: Length (Exp Double)
+    let asMeters = 2 *~ weaken meter :: Exp (Length Double)
         asFeet   = asMeters /~ foot
     show (CPU.run (unit asFeet)) `shouldSatisfy` isInfixOf "6.5616"
 

@@ -15,17 +15,12 @@ module Sigym4.Units.Accelerate.Internal ( (*~), (/~) ) where
 
 import           Sigym4.Units as U  hiding  ( (*~), (/~) )
 import           Data.Array.Accelerate as A
-import           Data.Array.Accelerate.Smart
 import           Data.Array.Accelerate.Array.Sugar as A
-import           Data.Array.Accelerate.Product
-import           Data.Coerce
-import           Data.ExactPi (approximateValue)
 import           Data.Typeable
-import           Numeric.Units.Dimensional (HasDimension, exactValue)
+import           Numeric.Units.Dimensional (HasDimension)
 import qualified Numeric.Units.Dimensional as DP
 import           Numeric.Units.Dimensional.Coercion as DP
 import           Prelude as P
-import           Language.Haskell.TH hiding (Exp)
 import           Unsafe.Coerce (unsafeCoerce)
 
 infixl 7 *~
