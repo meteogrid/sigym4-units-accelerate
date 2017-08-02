@@ -29,21 +29,13 @@ import           Language.Haskell.TH hiding (Exp)
 import           Unsafe.Coerce (unsafeCoerce)
 
 infixl 7 *~
-(*~) :: forall k d a. (P.Num (Exp a), P.Floating a, A.Lift Exp a, a ~ Plain a)
-     => Exp a
-     -> Unit k d a
-     -> Quantity d (Exp a)
-p *~ u = coerce (p A.* A.lift u')
-  where u' = approximateValue (exactValue u) :: a
-
+(*~) :: (Unlift Exp a, P.Num a, Elt (Plain a)) => Exp (Plain a) -> Unit k d a -> Exp (Plain (Quantity d a))
+a *~ u = A.lift1 (DP.*~ u) a
 
 infixl 7 /~
-(/~) :: forall k d a. (P.Fractional (Exp a), P.Floating a, A.Lift Exp a, a ~ Plain a)
-     => Quantity d (Exp a)
-     -> Unit k d a
-     -> Exp a
-p /~ u = coerce p A./ A.lift u'
-  where u' = approximateValue (exactValue u) :: a
+(/~) :: (Unlift Exp a, P.Fractional a, Elt (Plain a)) => Exp (Plain (Quantity d a)) -> Unit k d a -> Exp (Plain a)
+a /~ u = A.lift1 (DP./~ u) a
+
 
 
 type instance EltRepr (DP.Quantity u a) = EltRepr a
@@ -59,17 +51,12 @@ instance
   toElt     = Quantity . toElt
   fromElt   = fromElt . unQuantity
 
-instance cst a => IsProduct cst (Quantity u a) where
-  type ProdRepr (Quantity u a) = ((), a)
-  fromProd _ x = ((), unQuantity x)
-  toProd _ ((), x) = Quantity x
-  prod _ _ = ProdRsnoc ProdRunit
+instance (Lift Exp a, Elt (Plain a)) => Lift Exp (Quantity d a) where
+  type Plain (DP.Quantity d a) = Quantity d (Plain a)
+  lift = (unsafeCoerce :: Exp (Plain a) -> Exp (Quantity d (Plain a)))
+       . lift
+       . unQuantity
 
-instance (Real (Plain a), Lift Exp a, Elt (Plain a), Typeable u, HasDimension (Proxy u))
-  => Lift Exp (DP.Quantity u a) where
-  type Plain (DP.Quantity u a) = DP.Quantity u (Plain a)
-  lift x = Exp . Tuple $ NilTup `SnocTup` lift (unQuantity x)
 
-instance (Real a, Elt a, Typeable u, HasDimension (Proxy u))
-  => Unlift Exp (Quantity u (Exp a)) where
-  unlift t = Quantity $ Exp $ ZeroTupIdx `Prj` t
+instance (Unlift Exp a, Elt (Plain a)) => Unlift Exp (Quantity d a) where
+  unlift = Quantity . unlift . (unsafeCoerce :: Exp (Quantity d (Plain a)) -> Exp (Plain a))
