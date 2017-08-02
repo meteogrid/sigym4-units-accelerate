@@ -29,12 +29,12 @@ import           Language.Haskell.TH hiding (Exp)
 import           Unsafe.Coerce (unsafeCoerce)
 
 infixl 7 *~
-(*~) :: (Unlift Exp a, P.Num a, Elt (Plain a)) => Exp (Plain a) -> Unit k d a -> Exp (Plain (Quantity d a))
-a *~ u = A.lift1 (DP.*~ u) a
+(*~) :: forall d k a. (P.Num (Exp a), Elt a) => Exp a -> Unit k d (Exp a) -> Exp (Quantity d a)
+a *~ u = A.lift1 ((DP.*~ u) :: Exp a -> Quantity d (Exp a)) a
 
 infixl 7 /~
-(/~) :: (Unlift Exp a, P.Fractional a, Elt (Plain a)) => Exp (Plain (Quantity d a)) -> Unit k d a -> Exp (Plain a)
-a /~ u = A.lift1 (DP./~ u) a
+(/~) :: forall d k a. (P.Fractional (Exp a), Elt a) => Exp (Quantity d a) -> Unit k d (Exp a) -> Exp a
+a /~ u = A.lift1 ((DP./~ u) :: Quantity d (Exp a) -> Exp a) a
 
 
 
